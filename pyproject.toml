@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ylemis"
+version = "0.1.1"
+description = "Official Python SDK for the Ylemis Trust Platform: PII Shield, Injection Guard, GroundCheck — one client, one integration."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }  # client code only — models/services stay proprietary; access requires an API key
+authors = [{ name = "Ylemis", email = "pranshu.rs08@gmail.com" }]
+keywords = ["pii", "dpdp", "guardrails", "llm-security", "india", "aadhaar", "prompt-injection", "hallucination"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+]
+# Zero runtime dependencies — stdlib only. This is deliberate: a guardrails SDK
+# should not widen a customer's supply-chain surface.
+dependencies = []
+
+[project.urls]
+Homepage = "https://ylemis.com"
+Documentation = "https://ylemis.com/docs"
+
+[tool.setuptools.packages.find]
+where = ["src"]
