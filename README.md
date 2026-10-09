@@ -77,7 +77,7 @@ answer = result.safe_response                      # response after output guard
 * Guards that rewrite text run first, in order. Detectors run in parallel on the original text.
 * The strictest decision wins. A guard that raises **blocks** by default
   (`Pipeline(on_error="review" | "raise")` to change that).
-* `llm` is any function from prompt to text: OpenAI, Anthropic, a local model, or your own
+* `llm` is any function from prompt to text: a hosted model API, a local model, or your own
   retry/fallback layer.
 * PII Shield in a pipeline redacts and continues (`pii_mode="redact"`). Use
   `engine.pipeline(pii_mode="enforce")` to block on high-risk identifiers instead.
