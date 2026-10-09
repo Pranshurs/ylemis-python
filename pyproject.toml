@@ -1,21 +1,32 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ylemis"
-version = "0.1.1"
+version = "0.2.0"
 description = "Official Python SDK for the Ylemis Trust Platform: PII Shield, Injection Guard, GroundCheck — one client, one integration."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }  # client code only — models/services stay proprietary; access requires an API key
+license = "MIT"  # client code only — models/services stay proprietary; access requires an API key
+license-files = ["LICENSE"]
 authors = [{ name = "Ylemis", email = "pranshu.rs08@gmail.com" }]
-keywords = ["pii", "dpdp", "guardrails", "llm-security", "india", "aadhaar", "prompt-injection", "hallucination"]
+keywords = ["pii", "dpdp", "guardrails", "llm-security", "india", "aadhaar", "pan", "prompt-injection",
+            "hallucination", "rag", "ai-agents", "redaction"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Security",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Typing :: Typed",
 ]
 # Zero runtime dependencies — stdlib only. This is deliberate: a guardrails SDK
 # should not widen a customer's supply-chain surface.
@@ -24,6 +35,12 @@ dependencies = []
 [project.urls]
 Homepage = "https://ylemis.com"
 Documentation = "https://ylemis.com/docs"
+Source = "https://github.com/Pranshurs/ylemis-python"
+Issues = "https://github.com/Pranshurs/ylemis-python/issues"
+Changelog = "https://github.com/Pranshurs/ylemis-python/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+ylemis = ["py.typed"]

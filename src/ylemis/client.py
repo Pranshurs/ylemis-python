@@ -22,6 +22,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Iterable, Optional, Sequence
 
 from ._http import Transport
+from .guards import GroundCheckGuard, InjectionGuard, PIIShieldGuard
+from .pipeline import Pipeline
 from .exceptions import MissingKey
 from .models import (CheckReport, GroundCheckResult, InjectionResult, PIIResult,
                      RedactResult, Usage, merge_decisions)
@@ -135,9 +137,30 @@ class TrustEngine:
         self.injection = InjectionGuardClient(self._transport, resolved.get(INJECTION))
         self.groundcheck = GroundCheckClient(self._transport, resolved.get(GROUNDCHECK))
 
+        self.guards = _GuardFactory(self)
+
     def __repr__(self) -> str:  # never leak keys
         configured = [c.slug for c in (self.pii, self.injection, self.groundcheck) if c.configured]
         return f"TrustEngine(products={configured})"
+
+    def pipeline(self, *, redaction_mode: str = "replace", pii_mode: str = "redact",
+                 on_error: str = "block") -> Pipeline:
+        """Default chain from the products this engine has keys for.
+
+        Input: PII Shield (redact) then Injection Guard. Output: PII Shield and
+        GroundCheck. Unconfigured products are left out. Swap or drop steps with
+        Pipeline.replace() / Pipeline.without(), or build a Pipeline yourself.
+        """
+        g = self.guards
+        inp, out = [], []
+        if self.pii.configured:
+            inp.append(g.pii(redaction_mode=redaction_mode, mode=pii_mode))
+            out.append(g.pii(redaction_mode=redaction_mode, mode=pii_mode))
+        if self.injection.configured:
+            inp.append(g.injection())
+        if self.groundcheck.configured:
+            out.append(g.groundcheck())
+        return Pipeline(inp, out, on_error=on_error)
 
     # -- hooks -------------------------------------------------------------
     def check_input(self, prompt: str, *, checks: Iterable[str] = (PII, INJECTION),
@@ -215,3 +238,19 @@ class TrustEngine:
     def health(self) -> Dict[str, dict]:
         """No-auth liveness of all three services."""
         return {c.slug: c.health() for c in (self.pii, self.injection, self.groundcheck)}
+
+
+class _GuardFactory:
+    """engine.guards.pii() / .injection() / .groundcheck(): hosted guards bound to this engine."""
+
+    def __init__(self, engine: "TrustEngine"):
+        self._engine = engine
+
+    def pii(self, *, redaction_mode: str = "replace", mode: str = "redact") -> PIIShieldGuard:
+        return PIIShieldGuard(self._engine.pii, redaction_mode=redaction_mode, mode=mode)
+
+    def injection(self) -> InjectionGuard:
+        return InjectionGuard(self._engine.injection)
+
+    def groundcheck(self, *, threshold: float = 0.5) -> GroundCheckGuard:
+        return GroundCheckGuard(self._engine.groundcheck, threshold=threshold)

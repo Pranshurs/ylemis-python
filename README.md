@@ -1,8 +1,14 @@
 # ylemis — Python SDK for the Ylemis Trust Platform
 
+[![PyPI](https://img.shields.io/pypi/v/ylemis)](https://pypi.org/project/ylemis/) [![tests](https://github.com/Pranshurs/ylemis-python/actions/workflows/tests.yml/badge.svg)](https://github.com/Pranshurs/ylemis-python/actions/workflows/tests.yml) [![Python](https://img.shields.io/pypi/pyversions/ylemis)](https://pypi.org/project/ylemis/) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+
 One integration for all Ylemis guardrails: **PII Shield** (India-tuned PII detection/redaction,
-98.68% F1, 0% false positives on the published benchmark), **Injection Guard**, and **GroundCheck**.
-Zero dependencies — stdlib only.
+98.68% F1, 0% false positives on the [published benchmark](https://huggingface.co/datasets/Pranshurs/ylemis-india-pii-benchmark)),
+**Injection Guard**, and **GroundCheck**. Use them as one pipeline, swap in your own guards, or call
+any product on its own. Zero dependencies — stdlib only.
+
+[Try the models live, no sign-up](https://ylemis.com/products/pii-shield#try) ·
+[Docs](https://ylemis.com/docs) · [Free API key](https://ylemis.com/signup)
 
 ```bash
 pip install ylemis
@@ -10,8 +16,9 @@ pip install ylemis
 
 ## 30-second DPDP fix
 
-You're piping customer data into an LLM. Aadhaar/PAN in a third-party model's logs is a
-₹250-crore DPDP exposure. One line stops it at the door:
+You're piping customer data into an LLM. Under India's DPDP Act, personal data sent to a model
+provider is still your responsibility, and penalties for missing security safeguards go up to
+₹250 crore. One line keeps Aadhaar, PAN and phone numbers out of the prompt:
 
 ```python
 from ylemis import TrustEngine
@@ -42,6 +49,41 @@ if out.decision == "allow":
 
 `engine.scan(prompt=..., response=..., docs=...)` is batch/audit sugar over both hooks.
 
+## Pipelines: use ours, bring your own, or mix
+
+Every step is a guard with one method, `check(text, context)`. Build the default chain, then
+swap or drop steps. A guard you already run, such as a regex, an in-house classifier or another
+vendor's SDK, becomes a step by wrapping a function.
+
+```python
+from ylemis import TrustEngine, FunctionGuard
+
+engine = TrustEngine(api_key="sk_live_...")
+pipe = engine.pipeline()        # input: PII Shield -> Injection Guard; output: PII Shield, GroundCheck
+
+# Already have an injection filter? Keep it, use Ylemis for the rest:
+pipe = pipe.replace("injection-guard", FunctionGuard("my-filter", lambda text: my_filter(text)))
+pipe = pipe.without("groundcheck")                 # or drop a step
+
+result = pipe.run(user_text, llm=call_your_llm, docs=retrieved_docs)
+if result.blocked:
+    ...                                            # blocked input never reaches the LLM
+answer = result.safe_response                      # response after output guards
+```
+
+* A function guard may return `True`/`False`, `"allow" | "review" | "block"`, or
+  `(decision, rewritten_text)` if it redacts. Add a second parameter to receive context
+  (e.g. `docs`, `user_id`).
+* Guards that rewrite text run first, in order. Detectors run in parallel on the original text.
+* The strictest decision wins. A guard that raises **blocks** by default
+  (`Pipeline(on_error="review" | "raise")` to change that).
+* `llm` is any function from prompt to text: OpenAI, Anthropic, a local model, or your own
+  retry/fallback layer.
+* PII Shield in a pipeline redacts and continues (`pii_mode="redact"`). Use
+  `engine.pipeline(pii_mode="enforce")` to block on high-risk identifiers instead.
+
+`check_input` / `check_output` below still work unchanged.
+
 ## Error handling — errors are honest
 
 The API never masks infra errors as billing errors. The SDK encodes that contract as types:
@@ -64,7 +106,7 @@ Requests are metered only on success — a `ServiceBusy` retry never double-bill
 ## Per-product access
 
 ```python
-engine.pii.scan(text, redaction_mode="mask")   # mask | replace | drop | hash
+engine.pii.scan(text, redaction_mode="mask")   # mask | replace | drop | hash (keyed per account)
 engine.pii.redact(text)
 engine.pii.usage()
 engine.injection.score(text)
@@ -77,11 +119,11 @@ and raise `MissingKey` if called directly — so a PII-only key works fine today
 
 ## Development status
 
-All three adapters are exact, verified against the deployed services (2026-07-05),
-including a live end-to-end run with a single key across all three products.
+All three adapters are exact, verified against the deployed services, including a live
+end-to-end run with a single key across all three products.
 
 ```bash
-python -m unittest discover -s tests -v    # offline, no keys needed
+python -m pytest            # offline, no keys needed
 ```
 
 The SDK is MIT-licensed client code. API access requires a Ylemis subscription and

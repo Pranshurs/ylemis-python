@@ -14,7 +14,7 @@ import urllib.request
 
 from .exceptions import APIError, RateLimited, ServiceBusy, STATUS_MAP, YlemisError
 
-_USER_AGENT = "ylemis-python/0.1.0"
+_USER_AGENT = "ylemis-python/0.2.0"
 
 
 def _parse_retry_after(value: str | None, default: float = 1.0) -> float:
