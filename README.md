@@ -7,27 +7,46 @@ One integration for all Ylemis guardrails: **PII Shield** (India-tuned PII detec
 **Injection Guard**, and **GroundCheck**. Use them as one pipeline, swap in your own guards, or call
 any product on its own. Zero dependencies — stdlib only.
 
-[Try the models live, no sign-up](https://ylemis.com/products/pii-shield#try) ·
+[Try PII redaction live, no sign-up](https://ylemis.com/solutions/aadhaar-pan-redaction?utm_source=github&utm_medium=organic_social&utm_campaign=python_readme#try) ·
 [Docs](https://ylemis.com/docs) · [Free API key](https://ylemis.com/signup)
 
 ```bash
 pip install ylemis
 ```
 
-## 30-second DPDP fix
+## Redact support text before sending it to an LLM
 
-You're piping customer data into an LLM. Under India's DPDP Act, personal data sent to a model
-provider is still your responsibility, and penalties for missing security safeguards go up to
-₹250 crore. One line keeps Aadhaar, PAN and phone numbers out of the prompt:
+Support tickets can contain Aadhaar, PAN, phone numbers and other personal information.
+PII Shield detects and redacts supported identifiers before your application passes the text
+to an LLM. Start with synthetic examples in the [interactive demo](https://ylemis.com/solutions/aadhaar-pan-redaction#try),
+then evaluate it on representative, authorized samples from your own use case.
 
 ```python
 from ylemis import TrustEngine
 
 engine = TrustEngine(keys={"pii-shield": "sk_live_..."})
 
-safe_prompt = engine.check_input(user_text).redacted_text   # PII never leaves your app
-llm_response = call_your_llm(safe_prompt)
+redaction = engine.pii.redact(user_text)
+llm_response = call_your_llm(redaction.redacted_text)
 ```
+
+**Data flow:** your backend sends the original text to Ylemis's hosted API over HTTPS.
+The SDK does not perform local-only redaction. Pass the returned redacted text, rather than
+the original, to your LLM. Keep API keys on your backend and avoid logging raw customer text.
+Detection can miss identifiers; review the output for your risk level. Redaction alone does
+not establish legal compliance.
+
+### Pick a starting point
+
+| Your workflow | Start here |
+| --- | --- |
+| Support tickets or Indian identity-document text | [PII demo](https://ylemis.com/solutions/aadhaar-pan-redaction#try) and `engine.pii.redact(text)` |
+| Untrusted prompts or retrieved instructions | [Injection Guard](https://ylemis.com/products/injection-guard) and `engine.injection.score(text)` |
+| Answers that need checking against retrieved sources | [GroundCheck](https://ylemis.com/products/groundcheck) and `engine.groundcheck.check(answer, source=[...])` |
+
+Use the [published benchmark and evaluation scripts](https://huggingface.co/datasets/Pranshurs/ylemis-india-pii-benchmark)
+to inspect the reported PII results. Benchmark scores describe that evaluation, not a guarantee
+for every language, document or production input.
 
 ## The two hooks (full flow)
 
